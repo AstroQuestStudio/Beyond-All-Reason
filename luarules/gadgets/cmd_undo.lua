@@ -421,6 +421,9 @@ if gadgetHandler:IsSyncedCode() then
 
 	function gadget:Initialize()
 		gadgetHandler:RegisterUnitCommand(CMD.ANY)
+		if not enableAlertEchos and not nullifyFriendlySelfdDgunDamage then
+			gadgetHandler:RemoveCallIn("UnitPreDamaged")
+		end
 	end
 
 	-- log selfd commands
