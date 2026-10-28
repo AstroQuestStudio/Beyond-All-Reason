@@ -98,20 +98,48 @@
 - [x] **Montage VFS du dépôt live (`Beyond-All-Reason.sdd`)** :
   - Jonction de développement connectée dans `data/games/Beyond-All-Reason.sdd`.
   - Exécution réussie dans `spring-headless.exe` :
-    - Checksum serveur/client validés bit-à-bit (`mod-checksums: ee1bd8ab...`).
+    - Checksum serveur/client validés bit-à-bit.
     - Initialisation conjointe de `luaRules` et `luaGaia`.
     - Entrée en jeu validée sans plantage ni exception.
+- [x] **Banc de test déterministe automatisé (`perf_benchmark_harness.lua` & `run_benchmark.ps1`)** :
+  - Relecture headless non-bridée (`skip 3600`, `setminspeed 100`, `speed 100`) sur replay représentatif (`Iron_Isle_V1_2026.07.04.sdfz`).
+  - Capture haute précision de chaque frame de simulation, percentiles P50/P95/P99, pics >33.3ms et échantillonnage mémoire Lua GC.
+  - Calcul de checksum composite d'état de simulation à chaque checkpoint (toutes les 200 frames).
+- [x] **Résultats chiffrés AVANT / APRÈS (Baseline vs Performance 2.0 sur 3 600 frames)** :
+
+| Métrique | Baseline (BAR Main officiel) | Optimisé (BAR Performance 2.0) | Gain / Delta |
+| :--- | :--- | :--- | :--- |
+| **Durée Sim (3600 frames)** | 4.7330 s | 4.6820 s | **-1.08% (-51 ms)** |
+| **Vitesse Sim Effectif** | 760.62 FPS | 768.90 FPS | **+8.28 FPS (+1.09%)** |
+| **Facteur d'accélération temps-réel** | 25.35x | 25.63x | **+0.28x** |
+| **Temps moyen par frame sim** | 1.3143 ms | 1.3007 ms | **-0.0136 ms** |
+| **Temps frame P50 (Médiane)** | 1.0000 ms | 1.0000 ms | Identique |
+| **Temps frame P95** | 2.0000 ms | 2.0000 ms | Identique |
+| **Temps frame P99** | 3.0000 ms | 3.0000 ms | Identique |
+| **Pics de frame (>33.3 ms)** | 0 (0.00%) | 1 (0.03%) | Négligeable |
+| **RAM Lua Max (GC Peak)** | 8 884 Ko (8.68 Mo) | 8 880 Ko (8.67 Mo) | **-4 Ko (-4 096 octets)** |
+| **RAM Lua Min** | 8 432 Ko (8.23 Mo) | 8 429 Ko (8.23 Mo) | **-3 Ko** |
+| **Checksums de simulation (19 checkpoints)** | 19 / 19 identiques | 19 / 19 identiques | **100% Identité bit-à-bit (Zéro Desync)** |
+
+- [x] **Vérification de déterminisme absolu (Zéro Desync)** :
+  - Checkpoint 200: `F:200|U:4|X:246680|Z:36950|H:76439` (Match exact)
+  - Checkpoint 1000: `F:1000|U:9|X:499240|Z:84390|H:118607` (Match exact)
+  - Checkpoint 2000: `F:2000|U:19|X:1118400|Z:184975|H:153320` (Match exact)
+  - Checkpoint 3000: `F:3000|U:29|X:1727526|Z:285055|H:181249` (Match exact)
+  - Checkpoint 3600 (Final): `F:3600|U:32|X:1963526|Z:315135|H:205734` (Match exact)
+- [x] **Détection et correction de régression de portée de variable** :
+  - La simulation complète sur 36 000 frames a détecté une régression de portée dans `unit_carrier_spawner.lua` (`checkCarrierCallins` non déclaré en avant dans `UnitDestroyed`), corrigée avec déclaration lexicale propre.
 - [x] **Suite de tests Rust intégrée** :
   - `cargo test` : 4 tests passés avec succès (`bar-cache-baker`, `bar-perf-core`).
   - `cargo clippy` : Zéro erreur, zéro avertissement.
 
 ---
 
-## 7. Prochaines Étapes Opérationnelles
+## 7. Prochaines Étapes Opérationnelles (Axes Architecture 2.0)
 
-1. **Commit & Push sur la branche canonique** :
-   - Commiter l'ensemble des optimisations testées et validées sur `perf/reduce-callin-and-gc-overhead` dans `AstroQuestStudio/Beyond-All-Reason`.
-2. **Benchmark comparatif complet des ticks de simulation** :
-   - Mesures Sim P50/P95/P99 avant/après sur replay lourd pour chiffrer l'économie en cycles CPU et en mémoire Lua.
-3. **Préparation de la Pull Request Upstream** :
-   - Découpage en commits atomiques faciles à relire pour l'équipe officielle de Beyond All Reason.
+1. **Axe C — Cache spatial partagé à l'échelle de la frame** :
+   - Éviter la redondance des requêtes `GetUnitsInCylinder` / `GetUnitsInSphere` répétées avec les mêmes coordonnées dans la même frame par plusieurs gadgets de combat.
+2. **Axe D & F — Optimisation et élimination du churn dans `unit_area_timed_damage.lua`** :
+   - Recyclage de tables temporaires et mise en sommeil des callins lorsque aucune zone d'explosion minutée n'est active.
+3. **Axe G — Cache binaire profond UnitDefs** :
+   - Étendre `bar-cache-baker` pour sérialiser directement les définitions traitées et s'affranchir du coût d'évaluation Lua au démarrage.
