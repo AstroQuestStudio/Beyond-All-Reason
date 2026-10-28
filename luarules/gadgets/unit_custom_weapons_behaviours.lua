@@ -439,6 +439,20 @@ local guidanceResults = {} ---@type table<integer, GuidanceEffectResult|xyz>
 
 local lookahead = 0.6667 * Game.gameSpeed -- projectile position lookahead
 
+local guidanceTuplePool = {}
+local guidanceTuplePoolCount = 0
+
+local function allocGuidanceTuple(a, b, c)
+	if guidanceTuplePoolCount > 0 then
+		local t = guidanceTuplePool[guidanceTuplePoolCount]
+		guidanceTuplePool[guidanceTuplePoolCount] = nil
+		guidanceTuplePoolCount = guidanceTuplePoolCount - 1
+		t[1], t[2], t[3] = a, b, c
+		return t
+	end
+	return { a, b, c }
+end
+
 local function getGuidanceLost(projectileID, radius, targetID)
 	local ux, uy, uz
 	local teamID = spGetProjectileTeamID(projectileID)
@@ -456,7 +470,7 @@ local function getGuidanceLost(projectileID, radius, targetID)
 		ux, uy, uz = px + vx * lookahead, py + vy * lookahead, pz + vz * lookahead
 	end
 
-	local result = { ux, uy, uz }
+	local result = allocGuidanceTuple(ux, uy, uz)
 	guidanceResults[-targetID - 1] = result
 	return result
 end
@@ -746,6 +760,7 @@ function gadget:Initialize()
 			gadgetHandler:RegisterProjectile(weaponDefID)
 		end
 		gameFrame = Spring.GetGameFrame()
+		gadgetHandler:RemoveCallIn("GameFrame")
 	else
 		Spring.Log(gadget:GetInfo().name, LOG.INFO, "No custom weapons found.")
 		gadgetHandler:RemoveGadget(self)
@@ -753,20 +768,39 @@ function gadget:Initialize()
 end
 
 function gadget:ProjectileCreated(projectileID, proOwnerID, weaponDefID)
-	projectiles[projectileID] = weaponDefEffect[weaponDefID]
+	local effect = weaponDefEffect[weaponDefID]
+	if effect then
+		if not next(projectiles) then
+			gadgetHandler:UpdateCallIn("GameFrame")
+		end
+		projectiles[projectileID] = effect
+	end
 end
 
 function gadget:ProjectileDestroyed(projectileID)
 	projectiles[projectileID] = nil
+	if not next(projectiles) then
+		gadgetHandler:RemoveCallIn("GameFrame")
+	end
 end
 
 function gadget:GameFrame(frame)
 	gameFrame = frame
-	guidanceResults = {}
+	for k, v in pairs(guidanceResults) do
+		if type(v) == "table" and v ~= noGuidance then
+			guidanceTuplePoolCount = guidanceTuplePoolCount + 1
+			guidanceTuplePool[guidanceTuplePoolCount] = v
+		end
+		guidanceResults[k] = nil
+	end
 
 	for projectileID, effect in pairs(projectiles) do
 		if effect(projectileID) then
 			projectiles[projectileID] = nil
 		end
+	end
+
+	if not next(projectiles) then
+		gadgetHandler:RemoveCallIn("GameFrame")
 	end
 end

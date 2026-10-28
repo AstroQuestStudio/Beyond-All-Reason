@@ -382,6 +382,26 @@ local function getUnitShieldWeaponPosition(shieldUnitID, unitData)
 	end
 end
 
+local isShieldHooked = true
+
+local shieldSetPool = {}
+local shieldSetPoolCount = 0
+
+local function allocShieldSet()
+	if shieldSetPoolCount > 0 then
+		local s = shieldSetPool[shieldSetPoolCount]
+		shieldSetPool[shieldSetPoolCount] = nil
+		shieldSetPoolCount = shieldSetPoolCount - 1
+		return s
+	end
+	return {}
+end
+
+local function freeShieldSet(s)
+	shieldSetPoolCount = shieldSetPoolCount + 1
+	shieldSetPool[shieldSetPoolCount] = s
+end
+
 local function removeCoveredUnits(shieldUnitID)
 	local covered = shieldCoverages[shieldUnitID]
 	if covered then
@@ -391,6 +411,7 @@ local function removeCoveredUnits(shieldUnitID)
 				shieldSet[shieldUnitID] = nil
 				if not next(shieldSet) then
 					unitCoverages[unitID] = nil
+					freeShieldSet(shieldSet)
 				end
 			end
 			covered[unitID] = nil -- clear for table reuse
@@ -419,7 +440,7 @@ local function setCoveredUnits(shieldUnitID)
 		local unitID = unitsTable[i]
 		local shieldSet = unitCoverages[unitID]
 		if not shieldSet then
-			shieldSet = {}
+			shieldSet = allocShieldSet()
 			unitCoverages[unitID] = shieldSet
 		end
 		shieldSet[shieldUnitID] = true
@@ -441,6 +462,11 @@ end
 function gadget:UnitFinished(unitID, unitDefID, unitTeam)
 	local data = shieldUnitDefs[unitDefID]
 	if data then
+		if not isShieldHooked then
+			gadgetHandler:UpdateCallIn("UnitPreDamaged")
+			gadgetHandler:UpdateCallIn("ShieldPreDamaged")
+			isShieldHooked = true
+		end
 		shieldUnitsData[unitID] = {
 			shieldPowerRegen = data.shieldPowerRegen,
 			shieldPowerRegenEnergy = data.shieldPowerRegenEnergy,
@@ -478,8 +504,17 @@ function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerD
 		unitData.power = (success and state == 1 and power) or unitData.power or 0
 	end
 	-- Clean up coverage tracking for any destroyed unit (shield or not)
-	unitCoverages[unitID] = nil
+	if unitCoverages[unitID] then
+		freeShieldSet(unitCoverages[unitID])
+		unitCoverages[unitID] = nil
+	end
 	unitDefIDCache[unitID] = nil
+
+	if isShieldHooked and not next(shieldUnitsData) and not next(unitCoverages) then
+		gadgetHandler:RemoveCallIn("UnitPreDamaged")
+		gadgetHandler:RemoveCallIn("ShieldPreDamaged")
+		isShieldHooked = false
+	end
 end
 
 -- ProjectileCreated/ProjectileDestroyed intentionally not used.
@@ -1076,6 +1111,12 @@ function gadget:Initialize()
 		local unitDefID = Spring.GetUnitDefID(unitID)
 		local unitTeam = Spring.GetUnitTeam(unitID)
 		gadget:UnitFinished(unitID, unitDefID, unitTeam)
+	end
+
+	if not next(shieldUnitsData) and not next(unitCoverages) then
+		gadgetHandler:RemoveCallIn("UnitPreDamaged")
+		gadgetHandler:RemoveCallIn("ShieldPreDamaged")
+		isShieldHooked = false
 	end
 end
 
