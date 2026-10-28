@@ -47,14 +47,18 @@ local luaFiles
 local bakedCacheFile = "cache/unitdefs_cache.lua"
 if VFS.FileExists(bakedCacheFile) then
 	local success, cache = pcall(VFS.Include, bakedCacheFile)
-	if success and type(cache) == "table" and type(cache.unitPaths) == "table" then
-		luaFiles = {}
-		local c = 0
-		for _, path in pairs(cache.unitPaths) do
-			c = c + 1
-			luaFiles[c] = path
+	if success and type(cache) == "table" then
+		if type(cache.unitList) == "table" then
+			luaFiles = cache.unitList
+		elseif type(cache.unitPaths) == "table" then
+			luaFiles = {}
+			local c = 0
+			for _, path in pairs(cache.unitPaths) do
+				c = c + 1
+				luaFiles[c] = path
+			end
+			table.sort(luaFiles)
 		end
-		table.sort(luaFiles)
 	end
 end
 

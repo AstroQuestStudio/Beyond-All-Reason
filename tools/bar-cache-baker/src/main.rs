@@ -182,6 +182,13 @@ fn build_cache(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     writeln!(lua_out, "  }},")?;
+    writeln!(lua_out, "  unitList = {{")?;
+
+    for u in &manifest.units {
+        writeln!(lua_out, "    \"{}\",", u.relative_path)?;
+    }
+
+    writeln!(lua_out, "  }},")?;
     writeln!(lua_out, "}}")?;
     writeln!(lua_out, "return cache")?;
 

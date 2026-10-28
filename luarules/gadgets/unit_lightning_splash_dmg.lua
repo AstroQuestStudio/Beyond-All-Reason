@@ -104,17 +104,35 @@ end
 local lightningProjectiles = {} -- stores information related to every lighting bolt created in-game
 local lightning_shooter = {} -- stores information related to units directly hit by lighting bolts
 local lightning_shooter_ttl = {} -- stores information related to how long ago a unit was directly hit by lighting bolts
+local activeShooterCount = 0
+local gameFrameActive = true
+
+local function updateGameFrame()
+	if activeShooterCount > 0 and not gameFrameActive then
+		gadgetHandler:UpdateCallIn("GameFrame")
+		gameFrameActive = true
+	elseif activeShooterCount == 0 and gameFrameActive then
+		gadgetHandler:RemoveCallIn("GameFrame")
+		gameFrameActive = false
+	end
+end
 
 function gadget:GameFrame(frame)
 	-- keep track of unit "primary target" to avoid self-chaining
 	for attackerID, value in pairs(lightning_shooter_ttl) do
 		-- if lightning_shooter[attackerID] was shot by attackerID, they are immune to sparks from attackerID for 3 frames
-		lightning_shooter_ttl[attackerID] = lightning_shooter_ttl[attackerID] - 1 -- decrement counter
-		if lightning_shooter_ttl[attackerID] == 0 then
-			-- if counter reaches zero, set nil values
+		local newTtl = value - 1
+		if newTtl <= 0 then
 			lightning_shooter_ttl[attackerID] = nil
 			lightning_shooter[attackerID] = nil
+			activeShooterCount = activeShooterCount - 1
+		else
+			lightning_shooter_ttl[attackerID] = newTtl
 		end
+	end
+	if activeShooterCount <= 0 then
+		activeShooterCount = 0
+		updateGameFrame()
 	end
 end
 
@@ -188,13 +206,9 @@ function gadget:ProjectileDestroyed(proID)
 			projectileCacheTable["end"][1] = newx -- note, the keyword 'end' is reserved
 			projectileCacheTable["end"][2] = height2
 			projectileCacheTable["end"][3] = newz
-			--spSpawnProjectile(visual_chain_weapon, projectileCacheTable)
-			spSpawnProjectile(visual_chain_weapon, {
-				pos = { lightning.x, height1, lightning.z },
-				["end"] = { newx, height2, newz },
-				ttl = 2,
-				owner = -1,
-			})
+			projectileCacheTable.ttl = 2
+			projectileCacheTable.owner = -1
+			spSpawnProjectile(visual_chain_weapon, projectileCacheTable)
 			spSpawnCEG(terminal_spark_effect, newx, height2, newz, 0, 0, 0)
 		end
 
@@ -248,8 +262,12 @@ function gadget:UnitPreDamaged(
 	if attackerID and sparkWeapons[weaponID] then
 		-- engine does not provide a projectileID for hitscan weapons, bleh
 		-- as a workaround, if a unit is shot by a lightning unit, make it immune to that unit's chaining for 3 frames
+		if not lightning_shooter_ttl[attackerID] then
+			activeShooterCount = activeShooterCount + 1
+		end
 		lightning_shooter[attackerID] = unitID
 		lightning_shooter_ttl[attackerID] = 3
+		updateGameFrame()
 	end
 	return damage, 1
 end
@@ -265,4 +283,6 @@ function gadget:Initialize()
 	for weaponDefID in pairs(sparkWeapons) do
 		gadgetHandler:RegisterUnitPreDamagedWeapon(weaponDefID)
 	end
+	activeShooterCount = 0
+	updateGameFrame()
 end

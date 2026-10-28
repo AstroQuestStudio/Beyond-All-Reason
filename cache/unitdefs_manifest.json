@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
   "generator": "bar-cache-baker-v0.1.0",
-  "composite_hash": "dab115f3",
+  "composite_hash": "8bca19b2",
   "total_units": 971,
   "total_bytes": 3414403,
   "gamedata_hashes": {
     "gamedata/alldefs_post.lua": 2028441834,
-    "gamedata/unitdefs.lua": 3118580303,
+    "gamedata/unitdefs.lua": 2086735746,
     "gamedata/unitdefs_post.lua": 732037788
   },
   "units": [

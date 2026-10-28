@@ -132,12 +132,25 @@ if gadgetHandler:IsSyncedCode() then
 	-- area denial --
 	local centers = {} --table of where juno missiles hit etc
 	local counter = 1 --index each explosion of juno missile with this counter
+	local gameFrameActive = true
+
+	local function checkJunoCallin()
+		local active = next(centers) ~= nil
+		if active and not gameFrameActive then
+			gadgetHandler:UpdateCallIn("GameFrame")
+			gameFrameActive = true
+		elseif not active and gameFrameActive then
+			gadgetHandler:RemoveCallIn("GameFrame")
+			gameFrameActive = false
+		end
+	end
 
 	function gadget:Initialize()
 		Spring.SetGameRulesParam("juno_area_denial_radius", radius) -- read by gui_attack_aoe.lua
 		for weaponDefID in pairs(junoWeapons) do
 			gadgetHandler:RegisterExplosion(weaponDefID)
 		end
+		checkJunoCallin()
 	end
 
 	function gadget:Explosion(weaponID, px, py, pz, ownerID)
@@ -148,6 +161,7 @@ if gadgetHandler:IsSyncedCode() then
 		centers[counter] = junoExpl
 		--SendToUnsynced("AddToCenters", counter, px, py, pz, curtime)
 		counter = counter + 1
+		checkJunoCallin()
 	end
 
 	local lastupdate = -1
@@ -264,6 +278,9 @@ if gadgetHandler:IsSyncedCode() then
 			lastupdate = curtime
 			--SendToUnsynced("UpdateList", curtime)
 			update = false
+		end
+		if next(centers) == nil then
+			checkJunoCallin()
 		end
 	end
 

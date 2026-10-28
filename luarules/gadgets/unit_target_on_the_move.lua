@@ -139,6 +139,20 @@ if gadgetHandler:IsSyncedCode() then
 	local setTargetData = {} -- holds all unit data
 	local activeTargets = {}
 	local pausedTargets = {}
+	local totalUnitsWithTargets = 0
+	local hasQueryCache = false
+	local gameFrameActive = true
+
+	local function updateGameFrameCallin()
+		local needed = (totalUnitsWithTargets > 0) or hasQueryCache
+		if needed and not gameFrameActive then
+			gadgetHandler:UpdateCallIn("GameFrame")
+			gameFrameActive = true
+		elseif not needed and gameFrameActive then
+			gadgetHandler:RemoveCallIn("GameFrame")
+			gameFrameActive = false
+		end
+	end
 
 	-- Unlike the physical sim, unit, command, and "AI" AI respond to performance bottlenecks.
 	-- Use a work queue with a sliding index to process target lists in chunks on every frame.
@@ -439,6 +453,11 @@ if gadgetHandler:IsSyncedCode() then
 		removeFromQueue(unitID)
 		SendToUnsynced("targetList", unitID, 0) -- clear command gfx
 		spSetUnitRulesParam(unitID, "hasPriorityTarget", nil)
+		totalUnitsWithTargets = totalUnitsWithTargets - 1
+		if totalUnitsWithTargets <= 0 then
+			totalUnitsWithTargets = 0
+			updateGameFrameCallin()
+		end
 	end
 
 	local function pauseTargeting(unitID, unitData)
@@ -502,7 +521,12 @@ if gadgetHandler:IsSyncedCode() then
 			return
 		end
 
+		local isNewUnit = (setTargetData[unitID] == nil)
 		setTargetData[unitID] = data
+		if isNewUnit then
+			totalUnitsWithTargets = totalUnitsWithTargets + 1
+			updateGameFrameCallin()
+		end
 		spSetUnitRulesParam(unitID, "hasPriorityTarget", 1)
 		activeTargets[unitID] = data
 		pausedTargets[unitID] = nil
@@ -650,6 +674,7 @@ if gadgetHandler:IsSyncedCode() then
 			local unitID = allUnits[i]
 			gadget:UnitCreated(unitID, spGetUnitDefID(unitID), spGetUnitTeam(unitID))
 		end
+		updateGameFrameCallin()
 	end
 
 	function gadget:UnitCreated(unitID, unitDefID, unitTeam, builderID)
@@ -762,6 +787,8 @@ if gadgetHandler:IsSyncedCode() then
 					if not targets then
 						targets = CallAsTeam(unitTeam, spGetUnitsInRectangle, left, top, right, bot, ENEMY_UNITS)
 						teamCache[hash] = targets
+						hasQueryCache = true
+						updateGameFrameCallin()
 					end
 				elseif nParams == 4 then
 					local teamCache = ensureTable(teamQueryCaches, spGetUnitAllyTeam(unitID))
@@ -777,6 +804,8 @@ if gadgetHandler:IsSyncedCode() then
 							ENEMY_UNITS
 						)
 						teamCache[hash] = targets
+						hasQueryCache = true
+						updateGameFrameCallin()
 					end
 				end
 				if targets and targets[1] then
@@ -1036,15 +1065,25 @@ if gadgetHandler:IsSyncedCode() then
 	-- Weapons re-read the unit target on any frame, and an Attack command will replace it whenever
 	-- the unit is able to fire. So we re-apply the target every frame to prevent target jittering.
 	function gadget:GameFrame(frame)
-		for allyTeam, teamCache in pairs(teamQueryCaches) do
-			for hash in pairs(teamCache) do
-				teamCache[hash] = nil
+		if hasQueryCache then
+			for allyTeam, teamCache in pairs(teamQueryCaches) do
+				for hash in pairs(teamCache) do
+					teamCache[hash] = nil
+				end
 			end
+			hasQueryCache = false
+		end
+		if totalUnitsWithTargets <= 0 then
+			updateGameFrameCallin()
+			return
 		end
 		if frame % 15 == 0 then
 			processSlowListUpdates()
 		else
 			processTargetListChunk()
+		end
+		if totalUnitsWithTargets <= 0 then
+			updateGameFrameCallin()
 		end
 	end
 else -- UNSYNCED
@@ -1391,8 +1430,8 @@ else -- UNSYNCED
 		if init then
 			stopDrawing()
 		end
-		drawTarget = {}
-		unitIconsDrawn = {}
+		for k in pairs(drawTarget) do drawTarget[k] = nil end
+		for k in pairs(unitIconsDrawn) do unitIconsDrawn[k] = nil end
 	end
 
 	function gadget:DrawWorld()

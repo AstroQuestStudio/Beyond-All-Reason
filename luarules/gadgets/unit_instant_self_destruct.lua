@@ -42,6 +42,17 @@ end
 
 local toDestroy = {}
 local toDestroyCount = 0
+local gameFrameActive = true
+
+local function updateGameFrame()
+	if toDestroyCount > 0 and not gameFrameActive then
+		gadgetHandler:UpdateCallIn("GameFrame")
+		gameFrameActive = true
+	elseif toDestroyCount == 0 and gameFrameActive then
+		gadgetHandler:RemoveCallIn("GameFrame")
+		gameFrameActive = false
+	end
+end
 
 ---Queues a unit to be destroyed on the next game frame.
 ---@param unitID UnitID
@@ -50,6 +61,7 @@ local function QueueUnitDestruction(unitID, skipChecks)
 	if skipChecks or not spGetUnitIsStunned(unitID) then
 		toDestroyCount = toDestroyCount + 1
 		toDestroy[toDestroyCount] = unitID
+		updateGameFrame()
 	end
 end
 
@@ -68,9 +80,11 @@ function gadget:GameFrame(n)
 		end
 		toDestroyCount = 0
 	end
+	updateGameFrame()
 end
 
 function gadget:Initialize()
 	gadgetHandler:RegisterAllowCommand(CMD_SELFD)
 	GG.QueueUnitDestruction = QueueUnitDestruction
+	updateGameFrame()
 end

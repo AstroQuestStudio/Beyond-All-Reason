@@ -521,11 +521,24 @@ function gadget:Explosion(weaponDefID, x, y, z, attackerID, projectileID)
 	spawnClusterProjectiles(clusterWeaponDefs[weaponDefID], x, y, z, attackerID, projectileID)
 end
 
+local gameFramePostActive = true
+
+local function setGameFramePostActive(active)
+	if active and not gameFramePostActive then
+		gadgetHandler:UpdateCallIn("GameFramePost")
+		gameFramePostActive = true
+	elseif not active and gameFramePostActive then
+		gadgetHandler:RemoveCallIn("GameFramePost")
+		gameFramePostActive = false
+	end
+end
+
 function gadget:GameFramePost(frame)
 	local phs = projectileHitShield
 	for projectileID in pairs(phs) do
 		phs[projectileID] = nil
 	end
+	setGameFramePostActive(false)
 end
 
 ---@type ShieldPreDamagedCallback
@@ -551,6 +564,7 @@ local shieldPreDamaged = function(
 		else
 			projectileHitShield[projectileID] = { shieldUnitID }
 		end
+		setGameFramePostActive(true)
 	end
 end
 
@@ -580,6 +594,7 @@ function gadget:Initialize()
 	isInShield = GG.Shields.IsInShield
 
 	GG.Shields.RegisterShieldPreDamaged(projectiles, shieldPreDamaged)
+	setGameFramePostActive(false)
 end
 
 function gadget:Shutdown()

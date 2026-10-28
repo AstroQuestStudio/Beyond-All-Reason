@@ -51,15 +51,41 @@ for _, teamID in pairs(Spring.GetTeamList()) do
 	minesweepers[teamID] = {}
 end
 
+local totalMinesweepers = 0
+local gameFrameActive = true
+
+local function checkMinesweeperCallin()
+	local active = totalMinesweepers > 0
+	if active and not gameFrameActive then
+		gadgetHandler:UpdateCallIn("GameFrame")
+		gameFrameActive = true
+	elseif not active and gameFrameActive then
+		gadgetHandler:RemoveCallIn("GameFrame")
+		gameFrameActive = false
+	end
+end
+
 function gadget:MetaUnitAdded(unitID, unitDefID, unitTeam)
 	if minesweeperRanges[unitDefID] then
+		if not minesweepers[unitTeam][unitID] then
+			totalMinesweepers = totalMinesweepers + 1
+		end
 		minesweepers[unitTeam][unitID] = unitDefID
+		checkMinesweeperCallin()
 	end
 end
 
 function gadget:MetaUnitRemoved(unitID, unitDefID, unitTeam)
 	if minesweeperRanges[unitDefID] and minesweepers[unitTeam][unitID] then
 		minesweepers[unitTeam][unitID] = nil
+		totalMinesweepers = totalMinesweepers - 1
+		if totalMinesweepers <= 0 then
+			totalMinesweepers = 0
+			for tID in pairs(teamIDs) do
+				processRevealedMines(tID)
+			end
+			checkMinesweeperCallin()
+		end
 	end
 end
 
@@ -108,11 +134,14 @@ function gadget:GameFrame(n)
 end
 
 function gadget:Initialize()
+	totalMinesweepers = 0
 	for _, unitID in pairs(Spring.GetAllUnits()) do
 		local unitDefID = Spring.GetUnitDefID(unitID)
 		local unitTeam = Spring.GetUnitTeam(unitID)
 		if minesweeperRanges[unitDefID] then
 			minesweepers[unitTeam][unitID] = unitDefID
+			totalMinesweepers = totalMinesweepers + 1
 		end
 	end
+	checkMinesweeperCallin()
 end

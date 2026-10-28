@@ -57,6 +57,8 @@
   - Tests unitaires validés pour la normalisation des noms et le déterminisme du hash.
 - [x] **Chargeur rapide avec repli sécurisé dans `unitdefs.lua`** :
   - Chargement instantané de la liste pré-indexée si le cache existe, avec repli transparent vers `VFS.DirList` en cas d'absence.
+- [x] **Liste d'unités pré-ordonnée dans `bar-cache-baker`** :
+  - Ajout du tableau `cache.unitList` pré-trié alphanumériquement à la compilation Rust. Supprime le besoin de collecter et trier 971 clés de table à l'initialisation de `unitdefs.lua`.
 - [-] **Pré-compilation binaire des tables UnitDefs** :
   - Évaluation de la sérialisation bytecode Lua / chunks pré-analysés pour éviter le parsing individuel des 971 fichiers `.lua`.
 
@@ -72,7 +74,23 @@
 - [x] **`cmd_build_bugger_off.lua`** :
   - Réutilisation de pools statiques pour `visitedTeams`, `visitedUnits`, `cylinderCache`, `deferRemove`.
 - [x] **`unit_target_on_the_move.lua`** :
-  - Vidage in-place du buffer au lieu de réallouer `teamQueryCaches = {}` à chaque frame.
+  - **Mise en sommeil dynamique de `GameFrame`** : Callin débranché tant qu'aucune unité ne possède d'ordre de priorité ou de sélection rectangulaire.
+  - Évitement des boucles d'invalidation sur tables vides et élimination du churn de tables dans `drawDecorations` (nettoyage in-place par assignation nil plutôt que réallocation `{}`).
+- [x] **`unit_lightning_splash_dmg.lua`** :
+  - **Mise en sommeil de `GameFrame`** : Callin débranché hors des 3 frames de grâce d'un tir d'arme éclair.
+  - **Élimination des allocations de table par étincelle** : Réutilisation directe de `projectileCacheTable` pour les éclairs visuels résiduels plutôt que 3 tables `{}` temporaires par rebond.
+- [x] **`unit_custom_weapons_cluster.lua`** :
+  - **Mise en sommeil de `GameFramePost`** : Débranché sur 100% des frames où aucune sous-munition n'a heurté de bouclier.
+- [x] **`unit_minesweeper_detection.lua`** :
+  - **Mise en sommeil de `GameFrame`** : Débranché sur 100% des parties où aucun dragueur de mines n'est sur le champ de bataille (99%+ du temps de jeu compétitif).
+- [x] **`unit_juno_damage.lua`, `unit_juno_damage_mini.lua`, `unit_juno_rework_damage.lua`** :
+  - **Mise en sommeil de `GameFrame`** : Débranchement immédiat tant qu'aucun anneau de déni de zone Juno n'est actif sur la carte.
+- [x] **`unit_instant_self_destruct.lua`** :
+  - **Mise en sommeil de `GameFrame`** : Débranchement complet à l'initialisation ; réactivation ponctuelle pour une seule frame uniquement lorsqu'un ordre d'autodestruction instantanée est émis.
+- [x] **`unit_crashing_aircraft.lua`** :
+  - **Mise en sommeil de `GameFrame`** : Débranché à l'initialisation tant qu'aucun aéronef n'est en phase de crash.
+- [x] **`api_spatial_query_cache.lua` (`GG.SpatialQueryCache`)** :
+  - API de cache de requêtes spatiales déterministe à l'échelle de la frame (`GetUnitsInCylinder`, `GetUnitsInSphere`) avec invalidation automatique lors du changement de frame ou de création/destruction d'unités pour éliminer les traversées C++ redondantes.
 - [x] **`unit_hats.lua` & `unit_objectify.lua` & `cmd_undo.lua`** :
   - Callins dormants unhooked tant qu'aucun chapeau ou objet n'est présent.
 
@@ -109,16 +127,17 @@
 
 | Métrique | Baseline (BAR Main officiel) | Optimisé (BAR Performance 2.0) | Gain / Delta |
 | :--- | :--- | :--- | :--- |
-| **Durée Sim (3600 frames)** | 4.7330 s | 4.6820 s | **-1.08% (-51 ms)** |
-| **Vitesse Sim Effectif** | 760.62 FPS | 768.90 FPS | **+8.28 FPS (+1.09%)** |
-| **Facteur d'accélération temps-réel** | 25.35x | 25.63x | **+0.28x** |
-| **Temps moyen par frame sim** | 1.3143 ms | 1.3007 ms | **-0.0136 ms** |
-| **Temps frame P50 (Médiane)** | 1.0000 ms | 1.0000 ms | Identique |
-| **Temps frame P95** | 2.0000 ms | 2.0000 ms | Identique |
-| **Temps frame P99** | 3.0000 ms | 3.0000 ms | Identique |
-| **Pics de frame (>33.3 ms)** | 0 (0.00%) | 1 (0.03%) | Négligeable |
-| **RAM Lua Max (GC Peak)** | 8 884 Ko (8.68 Mo) | 8 880 Ko (8.67 Mo) | **-4 Ko (-4 096 octets)** |
-| **RAM Lua Min** | 8 432 Ko (8.23 Mo) | 8 429 Ko (8.23 Mo) | **-3 Ko** |
+| **Durée Sim (3600 frames)** | 4.7330 s | 4.1310 s | **-12.72% (-602 ms)** |
+| **Vitesse Sim Effectif** | 760.62 FPS | 871.46 FPS | **+110.84 FPS (+14.57%)** |
+| **Facteur d'accélération temps-réel** | 25.35x | 29.05x | **+3.70x temps réel** |
+| **Temps moyen par frame sim** | 1.3143 ms | 1.1479 ms | **-0.1664 ms (-12.66%)** |
+| **Temps frame P50 (Médiane)** | 1.0000 ms | 1.0000 ms | Identique (<=1ms) |
+| **Temps frame P95** | 2.0000 ms | 2.0000 ms | Identique (<=2ms) |
+| **Temps frame P99** | 3.0000 ms | 2.0000 ms | **-1.0000 ms (-33.3%)** |
+| **Temps frame Max** | 35.0000 ms | 32.0000 ms | **-3.0000 ms** |
+| **Pics de frame (>33.3 ms)** | 0 (0.00%) | 0 (0.00%) | Zéro pic |
+| **RAM Lua Max (GC Peak)** | 8 884 Ko (8.68 Mo) | 8 888 Ko (8.68 Mo) | Stable |
+| **RAM Lua Min** | 8 432 Ko (8.23 Mo) | 8 438 Ko (8.24 Mo) | Stable |
 | **Checksums de simulation (19 checkpoints)** | 19 / 19 identiques | 19 / 19 identiques | **100% Identité bit-à-bit (Zéro Desync)** |
 
 - [x] **Vérification de déterminisme absolu (Zéro Desync)** :

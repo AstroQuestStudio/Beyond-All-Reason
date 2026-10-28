@@ -95,6 +95,7 @@ if gadgetHandler:IsSyncedCode() then
 			end
 			-- make it crash
 			crashing[unitID] = GetGameFrame() + 450
+			checkCrashingCallin()
 			SetUnitCOBValue(unitID, COB_CRASHING, 1)
 			SetUnitNoSelect(unitID, true)
 			SetUnitNoMinimap(unitID, true)
@@ -136,6 +137,18 @@ if gadgetHandler:IsSyncedCode() then
 
 	local crashDestroyList = {}
 	local crashDestroyCount = 0
+	local gameFrameActive = true
+
+	local function checkCrashingCallin()
+		local active = next(crashing) ~= nil
+		if active and not gameFrameActive then
+			gadgetHandler:UpdateCallIn("GameFrame")
+			gameFrameActive = true
+		elseif not active and gameFrameActive then
+			gadgetHandler:RemoveCallIn("GameFrame")
+			gameFrameActive = false
+		end
+	end
 
 	function gadget:GameFrame(gf)
 		if gf % 44 == 1 and next(crashing) then
@@ -152,11 +165,17 @@ if gadgetHandler:IsSyncedCode() then
 				DestroyUnit(crashDestroyList[i], false, true)
 				crashDestroyList[i] = nil
 			end
+			checkCrashingCallin()
 		end
 	end
 
 	function gadget:UnitDestroyed(unitID, unitDefID, teamID, attackerID, attackerDefID, attackerTeamID)
 		crashing[unitID] = nil
+		checkCrashingCallin()
+	end
+
+	function gadget:Initialize()
+		checkCrashingCallin()
 	end
 else -- UNSYNCED
 	local GetSpectatingState = Spring.GetSpectatingState
