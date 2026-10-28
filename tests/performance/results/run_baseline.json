@@ -1,0 +1,17 @@
+{
+  "tag": "BAR_BASELINE_UNOPTIMIZED",
+  "total_frames": 3600,
+  "wallclock_sec": 4.7330,
+  "sim_fps": 760.62,
+  "sim_speedup": 25.35,
+  "frame_time_avg_ms": 1.3143,
+  "frame_time_p50_ms": 1.0000,
+  "frame_time_p95_ms": 2.0000,
+  "frame_time_p99_ms": 3.0000,
+  "frame_time_max_ms": 30.0000,
+  "spikes_over_33ms": 0,
+  "spikes_percent": 0.00,
+  "lua_mem_min_kb": 8432,
+  "lua_mem_max_kb": 8884,
+  "checkpoints": [{"frame": 200, "checksum": "F:200|U:4|X:246680|Z:36950|H:76439"}, {"frame": 400, "checksum": "F:400|U:6|X:370200|Z:55190|H:81801"}, {"frame": 600, "checksum": "F:600|U:7|X:482040|Z:67190|H:90492"}, {"frame": 800, "checksum": "F:800|U:8|X:491320|Z:75030|H:104449"}, {"frame": 1000, "checksum": "F:1000|U:9|X:499240|Z:84390|H:118607"}, {"frame": 1200, "checksum": "F:1200|U:12|X:734199|Z:116790|H:126631"}, {"frame": 1400, "checksum": "F:1400|U:15|X:868039|Z:145030|H:133481"}, {"frame": 1600, "checksum": "F:1600|U:16|X:983993|Z:155022|H:140068"}, {"frame": 1800, "checksum": "F:1800|U:18|X:1109520|Z:175135|H:146966"}, {"frame": 2000, "checksum": "F:2000|U:19|X:1118400|Z:184975|H:153320"}, {"frame": 2200, "checksum": "F:2200|U:22|X:1350326|Z:218575|H:157316"}, {"frame": 2400, "checksum": "F:2400|U:24|X:1366246|Z:236895|H:162586"}, {"frame": 2600, "checksum": "F:2600|U:26|X:1489766|Z:255135|H:168468"}, {"frame": 2800, "checksum": "F:2800|U:27|X:1604006|Z:266175|H:175555"}, {"frame": 3000, "checksum": "F:3000|U:29|X:1727526|Z:285055|H:181249"}, {"frame": 3200, "checksum": "F:3200|U:30|X:1735686|Z:295615|H:189163"}, {"frame": 3400, "checksum": "F:3400|U:31|X:1849926|Z:305375|H:197539"}, {"frame": 3600, "checksum": "F:3600|U:32|X:1963526|Z:315135|H:205734"}, {"frame": 3600, "checksum": "F:3600|U:32|X:1963526|Z:315135|H:205734"}]
+}
