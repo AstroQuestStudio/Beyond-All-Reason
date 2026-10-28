@@ -73,6 +73,15 @@ local builderRadiusOffsets = {}
 local needsUpdate = false
 local areaCommandCooldown = {}
 
+-- Pre-allocated static buffers to avoid GC table churning in GameFrame
+local visitedTeams = {}
+local visitedUnits = {}
+local cylinderCache = {}
+local deferRemove = {}
+local deferSlow = {}
+local deferSlowRemove = {}
+local deferWatch = {}
+
 local FAST_UPDATE_RADIUS = 400
 -- builders take about this much to enter build stance; determined empirically
 local BUILDER_DELAY_SECONDS = 3.3
@@ -184,15 +193,14 @@ function gadget:GameFrame(frame)
 		return
 	end
 
-	local visitedTeams = {}
-	local visitedUnits = {}
-	local cylinderCache = {} -- Cache GetUnitsInCylinder results per location
+	-- Reuse pooled buffers to prevent GC allocations
+	for k in pairs(visitedTeams) do visitedTeams[k] = nil end
+	for k in pairs(visitedUnits) do visitedUnits[k] = nil end
+	for k in pairs(cylinderCache) do cylinderCache[k] = nil end
 
 	local moveParams = insertMoveParams
 
-	-- Collect deferred actions to avoid modifying tables during pairs() iteration
-	local deferRemove = {}
-	local deferSlow = {}
+	-- Reset counts for pre-allocated deferred arrays
 	local deferRemoveCount = 0
 	local deferSlowCount = 0
 
@@ -302,8 +310,6 @@ function gadget:GameFrame(frame)
 
 	needsUpdate = false
 
-	local deferSlowRemove = {}
-	local deferWatch = {}
 	local deferSlowRemoveCount = 0
 	local deferWatchCount = 0
 
