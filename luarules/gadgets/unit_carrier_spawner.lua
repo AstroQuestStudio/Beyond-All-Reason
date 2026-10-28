@@ -126,6 +126,7 @@ local carrierUpdateList = {} -- scratch list of the carriers whose turn it is th
 local deferredDroneReleases = {}
 local stunnedDroneHeights = {} -- wanted height from before the stun
 local inUnitDestroyed = false
+local checkCarrierCallins
 
 local gaiaTeam
 
@@ -2180,7 +2181,7 @@ end
 
 local areCarrierCallinsActive = true
 
-local function checkCarrierCallins()
+checkCarrierCallins = function()
 	local shouldBeActive = (next(carrierMetaList) ~= nil) or (next(droneMetaList) ~= nil)
 	if shouldBeActive and not areCarrierCallinsActive then
 		gadgetHandler:UpdateCallIn("GameFrame")

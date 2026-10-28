@@ -16,7 +16,11 @@ if not gadgetHandler:IsSyncedCode() then
 	return
 end
 
-local ffi = require("ffi")
+local hasFFI, ffi = pcall(require, "ffi")
+if not hasFFI or not ffi then
+	gadgetHandler:RemoveGadget(self)
+	return
+end
 
 -- Define C types
 ffi.cdef[[

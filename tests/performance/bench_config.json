@@ -1,0 +1,5 @@
+{
+  "target_frames": 3600,
+  "output_file": "tests/performance/results/run_optimized.json",
+  "tag": "BAR_PERF_OPTIMIZED_V2"
+}
