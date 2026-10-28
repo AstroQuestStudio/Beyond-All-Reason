@@ -449,12 +449,28 @@ end
 local spawnWarpInFrame = Game.spawnWarpInFrame
 local spawnAwardsProcessed = false
 
-local function UpdateGameFrameCallIn()
-	if spawnAwardsProcessed and next(unitsWearingHats) == nil then
+local function UpdateHatCallIns()
+	local hasHats = (next(unitsWearingHats) ~= nil)
+	if spawnAwardsProcessed and not hasHats then
 		gadgetHandler:RemoveCallIn("GameFrame")
 	else
 		gadgetHandler:UpdateCallIn("GameFrame")
 	end
+	if hasHats then
+		gadgetHandler:UpdateCallIn("UnitDamaged")
+		gadgetHandler:UpdateCallIn("UnitCloaked")
+		gadgetHandler:UpdateCallIn("UnitDecloaked")
+	else
+		gadgetHandler:RemoveCallIn("UnitDamaged")
+		gadgetHandler:RemoveCallIn("UnitCloaked")
+		gadgetHandler:RemoveCallIn("UnitDecloaked")
+	end
+end
+
+local UpdateGameFrameCallIn = UpdateHatCallIns
+
+function gadget:Initialize()
+	UpdateHatCallIns()
 end
 
 local function CreateAndGiveHat(hatDefID, unitPosX, unitPosY, unitPosZ, teamID)
