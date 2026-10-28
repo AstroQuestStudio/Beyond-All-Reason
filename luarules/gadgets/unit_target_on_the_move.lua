@@ -1036,7 +1036,11 @@ if gadgetHandler:IsSyncedCode() then
 	-- Weapons re-read the unit target on any frame, and an Attack command will replace it whenever
 	-- the unit is able to fire. So we re-apply the target every frame to prevent target jittering.
 	function gadget:GameFrame(frame)
-		teamQueryCaches = {}
+		for allyTeam, teamCache in pairs(teamQueryCaches) do
+			for hash in pairs(teamCache) do
+				teamCache[hash] = nil
+			end
+		end
 		if frame % 15 == 0 then
 			processSlowListUpdates()
 		else
