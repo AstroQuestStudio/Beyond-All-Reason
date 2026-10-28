@@ -8,3 +8,6 @@
 .project
 *.code-workspace
 .lux
+
+/target/
+*.dll

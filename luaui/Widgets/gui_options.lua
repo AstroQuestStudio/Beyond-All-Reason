@@ -4188,6 +4188,24 @@ function init()
 		},
 
 		{
+			id = "upscaling_tech",
+			group = "gfx",
+			category = types.basic,
+			name = "3D Resolution Scaling (RCAS / Spatial)",
+			type = "select",
+			options = { "100% Native", "85% Ultra Quality", "77% Quality (+35% GPU)", "67% Balanced (+60% GPU)", "50% Performance (+100% GPU)" },
+			value = 1,
+			description = "Reduces 3D battlefield render resolution while keeping 2D HUD, text, and minimap at crystal-clear native screen resolution. Uses FidelityFX RCAS / EASU spatial reconstruction.",
+			onchange = function(option, value)
+				local scales = { 1.0, 0.85, 0.77, 0.67, 0.50 }
+				local scale = scales[value] or 1.0
+				if WG.RenderScale then
+					WG.RenderScale.SetScale(scale)
+				end
+			end,
+		},
+
+		{
 			id = "cas_sharpness",
 			group = "gfx",
 			category = types.advanced,
