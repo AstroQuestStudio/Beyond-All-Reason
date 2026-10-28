@@ -2476,10 +2476,16 @@ end
 -- LuaUI had a receiver at the last look.
 ---@type { frame: integer, since: integer?, servedAt: integer?, heard: boolean }
 local still = { frame = -1, since = nil, servedAt = nil, heard = false }
+local lastUpdateCheck = nil
 
 ---@diagnostic disable-next-line: undefined-field
 function gadget:Update()
 	local now = spGetTimer()
+	if lastUpdateCheck and spDiffTimers(now, lastUpdateCheck) < 0.25 then
+		return
+	end
+	lastUpdateCheck = now
+
 	local frame = spGetGameFrame()
 	local heard = Script.LuaUI("TeamStatsLive") == true
 	if heard and not still.heard then

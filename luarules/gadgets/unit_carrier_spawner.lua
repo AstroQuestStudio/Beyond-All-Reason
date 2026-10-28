@@ -955,6 +955,7 @@ function gadget:UnitCreated(unitID, unitDefID, unitTeam)
 
 	local availableSections = {}
 
+	checkCarrierCallins()
 	local f = spGetGameFrame()
 
 	for sectionIndex, dockingpieces in pairs(dockingsections) do
@@ -1347,6 +1348,7 @@ function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerD
 	end
 
 	inUnitDestroyed = false
+	checkCarrierCallins()
 end
 
 local function updateStandaloneDrones(frame)
@@ -2176,6 +2178,27 @@ function gadget:GameFramePost(f)
 	end
 end
 
+local areCarrierCallinsActive = true
+
+local function checkCarrierCallins()
+	local shouldBeActive = (next(carrierMetaList) ~= nil) or (next(droneMetaList) ~= nil)
+	if shouldBeActive and not areCarrierCallinsActive then
+		gadgetHandler:UpdateCallIn("GameFrame")
+		gadgetHandler:UpdateCallIn("GameFramePost")
+		gadgetHandler:UpdateCallIn("AllowCommand")
+		gadgetHandler:UpdateCallIn("UnitCommand")
+		gadgetHandler:UpdateCallIn("UnitStunned")
+		areCarrierCallinsActive = true
+	elseif not shouldBeActive and areCarrierCallinsActive then
+		gadgetHandler:RemoveCallIn("GameFrame")
+		gadgetHandler:RemoveCallIn("GameFramePost")
+		gadgetHandler:RemoveCallIn("AllowCommand")
+		gadgetHandler:RemoveCallIn("UnitCommand")
+		gadgetHandler:RemoveCallIn("UnitStunned")
+		areCarrierCallinsActive = false
+	end
+end
+
 function gadget:Initialize()
 	gadgetHandler:RegisterAllowCommand(CMD_CARRIER_SPAWN_ONOFF)
 	gadgetHandler:RegisterUnitCommand(CMD.ANY)
@@ -2193,6 +2216,7 @@ function gadget:Initialize()
 	gaiaTeam = Spring.GetGaiaTeamID()
 	gadgetHandler:RegisterGlobal("CobUndockSequenceFinished", CobUndockSequenceFinished)
 	gadgetHandler:RegisterGlobal("CobDroneSpawnSequenceFinished", CobDroneSpawnSequenceFinished)
+	checkCarrierCallins()
 end
 
 function gadget:Shutdown()
