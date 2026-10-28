@@ -83,12 +83,21 @@ if gadgetHandler:IsSyncedCode() then
 	local numDecorations = 0
 	local numObjects = 0
 
+	local function updatePreDamagedCallin()
+		if (numDecorations + numObjects) > 0 then
+			gadgetHandler:UpdateCallIn("UnitPreDamaged")
+		else
+			gadgetHandler:RemoveCallIn("UnitPreDamaged")
+		end
+	end
+
 	function gadget:Initialize()
 		gadgetHandler:RegisterAllowCommand(CMD.ATTACK)
 		gadgetHandler:RegisterAllowCommand(CMD.BUILD)
 		for _, unitID in pairs(Spring.GetAllUnits()) do
 			gadget:UnitCreated(unitID, spGetUnitDefID(unitID))
 		end
+		updatePreDamagedCallin()
 	end
 
 	local function hideFromSensors(unitID)
@@ -125,9 +134,11 @@ if gadgetHandler:IsSyncedCode() then
 	function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam, weaponDefID)
 		if isDecoration[unitDefID] then
 			numDecorations = numDecorations - 1
+			updatePreDamagedCallin()
 		end
 		if isObject[unitDefID] then
 			numObjects = numObjects - 1
+			updatePreDamagedCallin()
 		end
 	end
 
@@ -135,10 +146,12 @@ if gadgetHandler:IsSyncedCode() then
 		if isDecoration[unitDefID] then
 			numDecorations = numDecorations + 1
 			decorationUnit(unitID)
+			updatePreDamagedCallin()
 		end
 		if isObject[unitDefID] then
 			numObjects = numObjects + 1
 			objectifyUnit(unitID)
+			updatePreDamagedCallin()
 		end
 	end
 
