@@ -42,7 +42,25 @@ end
 --  (these will override the SWU versions)
 --
 
-local luaFiles = VFS.DirList("units/", "*.lua", nil, true)
+-- Fast-path: use pre-baked cache index if available, with safe fallback to VFS.DirList
+local luaFiles
+local bakedCacheFile = "cache/unitdefs_cache.lua"
+if VFS.FileExists(bakedCacheFile) then
+	local success, cache = pcall(VFS.Include, bakedCacheFile)
+	if success and type(cache) == "table" and type(cache.unitPaths) == "table" then
+		luaFiles = {}
+		local c = 0
+		for _, path in pairs(cache.unitPaths) do
+			c = c + 1
+			luaFiles[c] = path
+		end
+		table.sort(luaFiles)
+	end
+end
+
+if not luaFiles then
+	luaFiles = VFS.DirList("units/", "*.lua", nil, true)
+end
 
 local legionEnabled = Spring.GetModOptions().experimentallegionfaction
 local scavengersEnabled = BAR.Utilities.Gametype.IsScavengers()
@@ -138,19 +156,23 @@ for name, def in pairs(unitDefs) do
 	end
 end
 
+-- Optimized O(N) in-place buildoptions filter (zero table allocations, no table.remove array shifting)
 for name, def in pairs(unitDefs) do
-	local badOptions = {}
 	local buildOptions = def.buildoptions
-	for i, option in ipairs(buildOptions) do
-		if unitDefs[option] == nil then
-			table.insert(badOptions, i)
+	if buildOptions then
+		local w = 1
+		local n = #buildOptions
+		for r = 1, n do
+			local opt = buildOptions[r]
+			if unitDefs[opt] ~= nil then
+				if w ~= r then
+					buildOptions[w] = opt
+				end
+				w = w + 1
+			end
 		end
-	end
-	if #badOptions > 0 then
-		local removed = 0
-		for _, badIndex in ipairs(badOptions) do
-			table.remove(buildOptions, badIndex - removed)
-			removed = removed + 1
+		for i = w, n do
+			buildOptions[i] = nil
 		end
 	end
 end

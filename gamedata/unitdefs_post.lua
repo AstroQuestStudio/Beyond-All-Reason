@@ -43,21 +43,31 @@ for name, unitDef in pairs(UnitDefs) do
 	normalizeUnitDef(unitDef)
 end
 
+local unitPathIndex = nil
+
+local function buildUnitPathIndex(basePath)
+	local index = {}
+	local function scanDir(path)
+		local files = VFS.DirList(path, "*.lua")
+		for i = 1, #files do
+			local f = files[i]
+			local fname = f:match("([^/]+)$") or f
+			index[fname] = path
+		end
+		local subdirs = VFS.SubDirs(path)
+		for i = 1, #subdirs do
+			scanDir(subdirs[i])
+		end
+	end
+	scanDir(basePath)
+	return index
+end
+
 local function getFilePath(filename, path)
-	local files = VFS.DirList(path, "*.lua")
-	for i = 1, #files do
-		if path .. filename == files[i] then
-			return path
-		end
+	if not unitPathIndex then
+		unitPathIndex = buildUnitPathIndex(path)
 	end
-	local subdirs = VFS.SubDirs(path)
-	for i = 1, #subdirs do
-		local result = getFilePath(filename, subdirs[i])
-		if result then
-			return result
-		end
-	end
-	return false
+	return unitPathIndex[filename] or false
 end
 
 local function bakeUnitDefs()
